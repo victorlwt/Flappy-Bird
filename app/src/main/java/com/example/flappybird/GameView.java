@@ -11,6 +11,7 @@ import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Handler;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Display;
 import android.view.MotionEvent;
@@ -121,6 +122,7 @@ public class GameView extends View {
         if(birdFrame >= 2) {
             birdFrame = 0;
         }
+        Matrix m = new Matrix();
         if (gameState) {
             birdFrame++;
 //          Check if score should be added
@@ -136,6 +138,10 @@ public class GameView extends View {
                 velocity += gravity;
                 birdY += velocity;
             }
+            else{
+                gameState = false;
+            }
+            m.postRotate(velocity);
             for(int i=0;i<num_pipes; i++) {
                 pipeX[i] -= pipe_velocity;
                 if (pipeX[i] < -top_pipe.getWidth()) {
@@ -152,7 +158,9 @@ public class GameView extends View {
                 }
             }
         }
-        canvas.drawBitmap(birds[birdFrame], birdX, birdY, null);
+        Bitmap b_r = birds[birdFrame];
+        b_r = Bitmap.createBitmap(birds[birdFrame], 0, 0, b_r.getWidth(), b_r.getHeight(), m, true);
+        canvas.drawBitmap(b_r, birdX, birdY,null);
         show_score(canvas);
         handler.postDelayed(runnable, UPDATE_MILLIS);
     }
