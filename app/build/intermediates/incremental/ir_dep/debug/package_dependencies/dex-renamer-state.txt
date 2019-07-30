@@ -1,4 +1,0 @@
-#Sun Jul 28 23:32:56 CST 2019
-base.0=C\:\\Users\\Keasky\\Desktop\\Flappy-Bird\\app\\build\\intermediates\\transforms\\dexMerger\\debug\\10
-path.0=classes.dex
-renamed.0=classes.dex

@@ -24,8 +24,8 @@ public class GameView extends View {
 //    This is the custom view class
     Handler handler;    //Used to schedule a runnable after delay
     Runnable runnable;
-    final int UPDATE_MILLIS = 30;
-    Bitmap background, top_pipe, bottom_pipe;
+    final int UPDATE_MILLIS = 20;
+    Bitmap background, top_pipe, bottom_pipe, floor;
     Display display;
     Point point;
     int dWidth, dHeight;    //Get device's width and height
@@ -36,16 +36,25 @@ public class GameView extends View {
     int birdX, birdY;    //Tracking bird's position
     int velocity = 0, gravity = 3;
     boolean gameState = false;
-    int gap = 400;      //Gap between top pipe and bottom pipe
+    int gap = 450;      //Gap between top pipe and bottom pipe
     int minOffset, maxOffset;
     int num_pipes = 4;
     int pipe_velocity = 8;
+    int num_floor;
+    int floor_velocity = pipe_velocity;
+    int floor_y;
     int pipe_distance;
     int[] pipeX = new int[num_pipes];
     int[] pipeY_top = new int[num_pipes];
     Random random;
-    int score = 0;
     int cur_pipe = 0;   //Tracking the current pipe
+    int[] floor_x;
+
+//    Score
+    int highest_score = 0;
+    int score = 0;
+    Bitmap scoreboard;
+    int scoreboard_x, scoreboard_y;
 
     public GameView(Context context){
         super(context);
@@ -62,6 +71,8 @@ public class GameView extends View {
         Matrix r = new Matrix();
         r.postRotate(180);
         top_pipe = Bitmap.createBitmap(bottom_pipe, 0, 0, bottom_pipe.getWidth(), bottom_pipe.getHeight(), r, true);
+        floor = BitmapFactory.decodeResource(getResources(), R.drawable.ground);
+        scoreboard = BitmapFactory.decodeResource(getResources(), R.drawable.score);
         display = ((Activity) getContext()).getWindowManager().getDefaultDisplay();
         point = new Point();
         display.getSize(point);
@@ -83,6 +94,18 @@ public class GameView extends View {
             pipeX[i] = dWidth + i*pipe_distance;
             pipeY_top[i] = minOffset + random.nextInt(maxOffset-minOffset+1);
         }
+
+//        Floor
+        num_floor = dWidth/floor.getWidth()+2;
+        floor_x = new int[num_floor];
+        floor_y = dHeight-floor.getHeight()/2;
+        for(int i=0;i<num_floor; i++){
+            floor_x[i] = i*floor.getWidth();
+        }
+
+//        Scoreboard
+        scoreboard_x = dWidth/2 - scoreboard.getWidth()/2;
+        scoreboard_y = dHeight/2 - scoreboard.getWidth()/2;
     }
 
     public void show_score(Canvas canvas){
@@ -94,6 +117,19 @@ public class GameView extends View {
         int textHeight = (int) Math.ceil(metric.descent - metric.ascent);
         int y = (int)(textHeight - metric.descent);
         String s = Integer.toString(score);
+        canvas.drawText(s, dWidth/2-s.length()/2, y, paint);
+    }
+    public void show_scoreboard(Canvas canvas){
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+        paint.setColor(Color.WHITE);
+        paint.setTextSize((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 40, getResources().getDisplayMetrics()));
+        paint.setTextAlign(Paint.Align.CENTER);
+        Paint.FontMetrics metric = paint.getFontMetrics();
+        int y = scoreboard_y+scoreboard.getHeight()*4/9;
+        String s = Integer.toString(score);
+        canvas.drawText(s, dWidth/2-s.length()/2, y, paint);
+        s = Integer.toString(highest_score);
+        y = scoreboard_y+scoreboard.getHeight()*5/6;;
         canvas.drawText(s, dWidth/2-s.length()/2, y, paint);
     }
     public void restart(){
@@ -123,6 +159,9 @@ public class GameView extends View {
             birdFrame = 0;
         }
         Matrix m = new Matrix();
+        m.postRotate(velocity);
+        Bitmap b_r = birds[birdFrame];
+        b_r = Bitmap.createBitmap(birds[birdFrame], 0, 0, b_r.getWidth(), b_r.getHeight(), m, true);
         if (gameState) {
             birdFrame++;
 //          Check if score should be added
@@ -141,7 +180,6 @@ public class GameView extends View {
             else{
                 gameState = false;
             }
-            m.postRotate(velocity);
             for(int i=0;i<num_pipes; i++) {
                 pipeX[i] -= pipe_velocity;
                 if (pipeX[i] < -top_pipe.getWidth()) {
@@ -150,17 +188,29 @@ public class GameView extends View {
                 }
                 canvas.drawBitmap(top_pipe, pipeX[i], pipeY_top[i] - top_pipe.getHeight(), null);
                 canvas.drawBitmap(bottom_pipe, pipeX[i], pipeY_top[i] + gap, null);
-                if (check_collision(birdX, birdY, birds[0].getWidth(), birds[0].getHeight(), pipeX[i], pipeY_top[i] - top_pipe.getHeight(), top_pipe.getWidth(), top_pipe.getHeight())) {
+                if (check_collision(birdX, birdY, b_r.getWidth(), b_r.getHeight(), pipeX[i], pipeY_top[i] - top_pipe.getHeight(), top_pipe.getWidth(), top_pipe.getHeight())) {
                     gameState = false;
                 }
-                if (check_collision(birdX, birdY, birds[0].getWidth(), birds[0].getHeight(), pipeX[i], pipeY_top[i] + gap, top_pipe.getWidth(), top_pipe.getHeight())) {
+                if (check_collision(birdX, birdY, b_r.getWidth(), b_r.getHeight(), pipeX[i], pipeY_top[i] + gap, top_pipe.getWidth(), top_pipe.getHeight())) {
                     gameState = false;
                 }
             }
+            for(int i=0;i<num_floor; i++){
+                floor_x[i] -= floor_velocity;
+                if(floor_x[i] < -floor.getWidth()){
+                    floor_x[i] += num_floor*floor.getWidth();
+                }
+                canvas.drawBitmap(floor, floor_x[i], floor_y, null);
+            }
+            canvas.drawBitmap(b_r, birdX, birdY,null);
         }
-        Bitmap b_r = birds[birdFrame];
-        b_r = Bitmap.createBitmap(birds[birdFrame], 0, 0, b_r.getWidth(), b_r.getHeight(), m, true);
-        canvas.drawBitmap(b_r, birdX, birdY,null);
+        else{
+            if(score > highest_score){
+                highest_score = score;
+            }
+            canvas.drawBitmap(scoreboard, scoreboard_x, scoreboard_y, null);
+            show_scoreboard(canvas);
+        }
         show_score(canvas);
         handler.postDelayed(runnable, UPDATE_MILLIS);
     }
